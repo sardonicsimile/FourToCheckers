@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TabLink — Classroom Screen Share</title>
+<style>
+:root{font-family:Inter,system-ui,Arial,sans-serif;color:#17191f;background:#f7f7f8}*{box-sizing:border-box}
+body{margin:0}button,input,select{font:inherit}button{cursor:pointer}
+.app{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:100vh}.side{border-right:1px solid #e7e7eb;background:#fff;padding:28px 16px;display:flex;flex-direction:column;gap:8px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;padding:12px 10px 30px}.logo{display:grid;place-items:center;width:36px;height:36px;background:#17191f;color:#fff;border-radius:12px}
+.nav{border:0;text-align:left;border-radius:12px;background:transparent;padding:14px 15px;color:#525866}.nav.active{background:#ececf1;color:#17191f;font-weight:700}
+.small{font-size:12px;color:#79808d}.bottom{margin-top:auto;background:#f4f4f6;padding:12px 14px;border-radius:14px}
+.main{max-width:1300px;width:100%;margin:0 auto;padding:54px 44px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:34px}.eyebrow{color:#676e7a;font-size:13px;font-weight:650;letter-spacing:.07em;text-transform:uppercase}
+h1{font-size:clamp(32px,4vw,56px);letter-spacing:-.05em;line-height:1.08;margin:10px 0 18px}p{color:#666d78;line-height:1.55;margin:0 0 18px}
+.cols{display:grid;grid-template-columns:minmax(320px,1fr) minmax(360px,1.12fr);gap:28px}
+.panel{background:white;border:1px solid #e9e9ed;border-radius:24px;padding:30px;box-shadow:0 7px 28px #20252b08}
+.title{font-size:20px;font-weight:750;letter-spacing:-.025em;margin-bottom:12px}.digits{display:flex;gap:9px;margin:22px 0}
+.digit{flex:1;min-width:0;text-align:center;border:1px solid #e5e5ea;border-radius:12px;background:#fafafa;font-size:clamp(23px,3vw,41px);font-weight:700;padding:17px 0;font-variant-numeric:tabular-nums}
+.primary{background:#17191f;color:white;border:1px solid #17191f}.secondary{background:#fff;color:#25272b;border:1px solid #dedee5}
+.btn{border-radius:12px;padding:15px 20px;font-weight:700;width:100%}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btnrow{display:flex;gap:10px}.btnrow>.btn{width:auto;flex:1}.pill{font-size:13px;padding:7px 11px;border:1px solid #dfe2e8;border-radius:99px;background:#fff;color:#56606d}
+.live{color:#18894d}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#97a0ad;margin-right:8px}.dot.live{background:#22b261}
+.screen{aspect-ratio:16/9;background:#14181f;border-radius:17px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.screen video,.screen img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#050608}
+.placeholder{text-align:center;color:#d9dce4;padding:24px;max-width:360px}.placeholder .pic{font-size:52px;margin-bottom:13px}.placeholder b{font-size:19px}.placeholder p{color:#a6aab3;margin-top:9px}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.stat div{background:#f7f7f9;border-radius:13px;padding:15px;text-align:center}.stat strong{display:block;font-size:18px;margin-bottom:4px}
+.input{width:100%;border:1px solid #dfe1e6;background:#fff;border-radius:12px;padding:15px 16px;outline:0}.input:focus{border-color:#393e49}
+.codeInput{font-size:28px;text-align:center;letter-spacing:.25em;font-variant-numeric:tabular-nums;font-weight:750}
+.tabs{display:flex;gap:7px;margin:0 0 22px}.tab{border:1px solid #e1e2e7;border-radius:10px;padding:11px 13px;background:#fff;flex:1}.tab.active{background:#17191f;color:#fff}
+.field{margin:15px 0}.field label{display:block;font-weight:650;font-size:13px;margin-bottom:8px}
+.note{border-radius:13px;padding:14px 16px;background:#f5f5f7;font-size:13px;line-height:1.5;color:#59606b}
+#message{min-height:28px;color:#5c6573;font-size:13px;margin-top:12px}.err{color:#b42318!important}
+#senderPanel{display:none}.shareLink{font-size:12px;word-break:break-all;background:#f5f5f7;border-radius:10px;padding:12px;margin-top:12px}
+.flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.muted{color:#69717e}.hidden{display:none!important}
+@media(max-width:1000px){.cols{grid-template-columns:1fr}.main{padding:32px 22px}}
+@media(max-width:650px){.app{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid #e7e7eb;padding:8px 12px;flex-direction:row;align-items:center;gap:4px}.side .brand{padding:8px;font-size:15px}.side .bottom{display:none}.nav{padding:10px 8px;font-size:12px}.main{padding:25px 14px}.panel{padding:22px}.digit{font-size:25px;padding:13px 0}.stat strong{font-size:14px}}
+</style></head>
+<body><div class="app">
+<aside class="side"><div class="brand"><span class="logo">T</span>TabLink</div>
+<button class="nav active" id="navBoard">▣ &nbsp; Board receiver</button><button class="nav" id="navPhone">↗ &nbsp; Share screen</button>
+<div class="bottom small">● &nbsp; Secure code pairing<br><span style="padding-left:14px">Independent classroom tool</span></div></aside>
+<main class="main">
+<header class="top"><div><div class="eyebrow">Wireless classroom mirroring</div><h1 id="headline">Connect to your board.</h1><p id="subtitle">Open this page on the Boxlight, generate a code, and enter it on your device.</p></div><span class="pill" id="connectionState"><span class="dot" id="dot"></span>Not connected</span></header>
+<div class="cols"><div class="panel" id="boardPanel">
+<div class="title">Your board connection code</div><p>Generate a six-digit code on the display. The code expires after 10 minutes.</p>
+<div class="digits" id="digits"><span class="digit">–</span><span class="digit">–</span><span class="digit">–</span><span class="digit">–</span><span class="digit">–</span><span class="digit">–</span></div>
+<button class="btn primary" id="create">Generate connection code</button><div id="countdown" class="small" style="margin:14px 0"></div>
+<div class="btnrow"><button class="btn secondary" id="copy" disabled>Copy pairing link</button><button class="btn secondary" id="stop" disabled>Disconnect</button></div>
+<div id="shareLink" class="shareLink hidden"></div>
+<div class="note" style="margin-top:20px">No same Wi-Fi or matching IP address required. Both devices must be able to reach this website. Direct video may require an allowed TURN relay.</div>
+</div>
+<div class="panel" id="senderPanel">
+<div class="title">Share your screen</div><p>Type the board's code below, then choose what you want to share.</p>
+<input class="input codeInput" id="codeEntry" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000">
+<div class="field"><label>What do you want to share?</label><div class="tabs"><button class="tab active" data-source="screen">Entire screen</button><button class="tab" data-source="window">One application</button></div></div>
+<div class="field"><label for="quality">Video quality target</label><select class="input" id="quality"><option value="1080">1080p · up to 60 FPS</option><option value="720">720p · 30 FPS (stable)</option><option value="4k">4K · up to 60 FPS (experimental)</option></select></div>
+<button class="btn primary" id="share">Start screen sharing</button><div class="note" style="margin-top:16px">Your browser or device selects the capture source and asks for permission. Many mobile browsers cannot capture the device screen; Samsung Android requires a companion app. 4K/60 FPS is not guaranteed.</div>
+</div>
+<div class="panel"><div class="title">Live board preview</div>
+<div class="screen" id="screen"><div class="placeholder" id="empty"><div class="pic">▣</div><b>Waiting for your device</b><p>Your shared screen will appear here when connected.</p></div><video autoplay muted playsinline id="video" class="hidden"></video><img id="fallback" class="hidden" alt="Low frame rate screen stream"></div>
+<div class="stat"><div><strong id="resolution">—</strong><span class="small">Resolution</span></div><div><strong id="fps">—</strong><span class="small">Frames/sec</span></div><div><strong id="mode">WebRTC</strong><span class="small">Connection</span></div></div>
+<div class="btnrow" style="margin-top:18px"><button class="btn secondary" id="fullscreen" disabled>Fullscreen</button><button class="btn secondary" id="endSession" disabled>End session</button></div>
+<div id="message" role="status">Ready to connect.</div></div></div>
+<div class="small" style="padding-top:22px">TabLink prototype · Screen content is not recorded by this server · Test with non-sensitive content first</div>
+</main></div>
+<script>
+(function(){
+'use strict';
+var $=function(x){return document.getElementById(x)},view='viewer',source='screen',sess=null,pc=null,media=null,poller=null,clock=null,watchdog=null,frameLoop=null,frameUrl=null,frameAfter='',lastStats=0,ended=false;
+var iceQueue=[],direct=false;
+function notify(t,err){$('message').textContent=t;$('message').className=err?'err':''}
+function state(t,good){$('connectionState').innerHTML='<span class="dot'+(good?' live':'')+'"></span>'+t}
+function switchView(v){view=v;$('boardPanel').style.display=v==='viewer'?'block':'none';$('senderPanel').style.display=v==='sender'?'block':'none';$('navBoard').classList.toggle('active',v==='viewer');$('navPhone').classList.toggle('active',v==='sender');$('headline').textContent=v==='viewer'?'Connect to your board.':'Share to your board.';$('subtitle').textContent=v==='viewer'?'Generate a code on this display to receive a screen.':'Enter the six-digit code shown on the Boxlight.'}
+$('navBoard').onclick=function(){if(!sess)switchView('viewer')};
+$('navPhone').onclick=function(){if(!sess)switchView('sender')};
+Array.prototype.forEach.call(document.querySelectorAll('[data-source]'),function(b){b.onclick=function(){source=b.getAttribute('data-source');Array.prototype.forEach.call(document.querySelectorAll('[data-source]'),function(x){x.classList.toggle('active',x===b)})}});
+$('codeEntry').oninput=function(){this.value=this.value.replace(/\D/g,'').slice(0,6)};
+if(location.hash.indexOf('#share=')===0){switchView('sender');$('codeEntry').value=location.hash.slice(7).replace(/\D/g,'').slice(0,6)}
+function endpoint(a){return '/api/'+a+'/'+sess.code}
+function call(path,data,authorized){return fetch(path,{method:data===null?'GET':'POST',headers:Object.assign({},authorized?{'Authorization':'Bearer '+sess.token}:{},data===null?{}:{'Content-Type':'application/json'}),body:data===null?undefined:JSON.stringify(data),cache:'no-store'}).then(function(r){return r.json().then(function(d){if(!r.ok)throw Error(d.error||'Request failed');return d})})}
+function signal(d){return call(endpoint('signal'),d,true).catch(function(e){notify(e.message,true)})}
+function showStream(s){var v=$('video');v.srcObject=s;v.classList.remove('hidden');$('fallback').classList.add('hidden');$('empty').classList.add('hidden');$('fullscreen').disabled=false;v.onplaying=function(){direct=true;clearTimeout(watchdog);$('mode').textContent='WebRTC';state('Connected',true);notify('Live video connected.')};v.play().catch(function(){})}
+function setupPeer(ice){
+ if(!window.RTCPeerConnection){notify('This browser does not support WebRTC; trying compatibility streaming.',true);return}
+ pc=new RTCPeerConnection({iceServers:ice||[]});
+ pc.onicecandidate=function(ev){if(ev.candidate&&sess)signal({type:'ice',candidate:ev.candidate})};
+ pc.ontrack=function(ev){if(ev.streams&&ev.streams[0])showStream(ev.streams[0])};
+ pc.onconnectionstatechange=function(){if(!pc)return;if(pc.connectionState==='connected'){direct=true;clearTimeout(watchdog);state('Connected',true)}};
+}
+async function receiveSignal(m){
+ if(m.type==='ended'){finish(false,'Other device disconnected');return}
+ if(m.type==='joined'){state('Device paired');notify('Device paired. Establishing video…');return}
+ if(!pc)return;
+ if(m.type==='offer'&&view==='viewer'){await pc.setRemoteDescription({type:'offer',sdp:m.sdp});for(var i=0;i<iceQueue.length;i++)await pc.addIceCandidate(iceQueue[i]);iceQueue=[];var answer=await pc.createAnswer();await pc.setLocalDescription(answer);await signal({type:'answer',sdp:pc.localDescription.sdp});return}
+ if(m.type==='answer'&&view==='sender'){await pc.setRemoteDescription({type:'answer',sdp:m.sdp});for(var j=0;j<iceQueue.length;j++)await pc.addIceCandidate(iceQueue[j]);iceQueue=[];return}
+ if(m.type==='ice'){if(pc.remoteDescription)await pc.addIceCandidate(m.candidate);else iceQueue.push(m.candidate)}
+}
+async function poll(){if(!sess||ended)return;var current=sess;try{var r=await call(endpoint('poll'),null,true);if(current!==sess)return;if(r.ended){finish(false,'Session ended');return}for(var i=0;i<r.messages.length;i++)await receiveSignal(r.messages[i])}catch(e){notify('Reconnecting: '+e.message,true)}if(current===sess&&!ended)poller=setTimeout(poll,600)}
+function begin(s,v){sess=s;view=v;ended=false;direct=false;frameAfter='';lastStats=0;iceQueue=[];setupPeer(s.ice);poll();$('stop').disabled=false;$('endSession').disabled=false}
+function cleanFrame(){clearTimeout(frameLoop);frameLoop=null;if(frameUrl)URL.revokeObjectURL(frameUrl);frameUrl=null}
+async function fallbackPoll(){
+ if(!sess||view!=='viewer'||direct||ended)return;
+ var current=sess;
+ try{var r=await fetch(endpoint('frame')+'?after='+frameAfter,{headers:{Authorization:'Bearer '+sess.token},cache:'no-store'});if(r.status===200){frameAfter=r.headers.get('X-Frame-Id')||'';var b=await r.blob();if(current!==sess)return;var url=URL.createObjectURL(b);if(frameUrl)URL.revokeObjectURL(frameUrl);frameUrl=url;$('fallback').src=url;$('fallback').classList.remove('hidden');$('video').classList.add('hidden');$('empty').classList.add('hidden');$('fullscreen').disabled=false;state('Low-FPS mode',true);$('mode').textContent='HTTPS';notify('Compatibility stream active; lower quality and frame rate.')}}catch(e){}
+ if(current===sess&&!direct)frameLoop=setTimeout(fallbackPoll,300)
+}
+function fallbackSend(){
+ if(!media||!sess||view!=='sender'||direct)return;
+ var v=document.createElement('video');v.autoplay=true;v.muted=true;v.playsInline=true;v.srcObject=media;v.play().catch(function(){});
+ var canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+ async function frame(){if(!sess||!media||direct)return;try{if(v.readyState>=2&&ctx){var w=v.videoWidth||1280,h=v.videoHeight||720,r=Math.min(1,960/Math.max(w,h));canvas.width=Math.max(2,Math.round(w*r));canvas.height=Math.max(2,Math.round(h*r));ctx.drawImage(v,0,0,canvas.width,canvas.height);var b=await new Promise(function(resolve){canvas.toBlob(resolve,'image/jpeg',.5)});if(b){await fetch(endpoint('frame'),{method:'POST',headers:{Authorization:'Bearer '+sess.token,'Content-Type':'image/jpeg'},body:b})}}}catch(e){}frameLoop=setTimeout(frame,750)}
+ frame();
+}
+function fallbackAfterTimeout(){watchdog=setTimeout(function(){if(!direct&&sess){$('mode').textContent='Fallback';notify('Direct video unavailable. Trying slower HTTPS mode.');if(view==='viewer')fallbackPoll();else fallbackSend()}},9500)}
+$('create').onclick=async function(){
+ if(sess)return;this.disabled=true;
+ try{var s=await call('/api/create',{},false);begin(s,'viewer');var digits=document.querySelectorAll('.digit');for(var i=0;i<6;i++)digits[i].textContent=s.code[i];var link=location.origin+'/#share='+s.code;$('shareLink').textContent=link;$('shareLink').classList.remove('hidden');$('copy').disabled=false;state('Waiting for device');notify('Use this code on your phone or tablet.');clock=setInterval(function(){if(!sess)return;var sec=Math.max(0,Math.floor((s.expire-Date.now())/1000));$('countdown').textContent='Code expires in '+Math.floor(sec/60)+':'+('0'+sec%60).slice(-2);if(!sec&&sess&&sess.code===s.code&&sess.expire===s.expire)finish(true,'Code expired')},1000);fallbackAfterTimeout()}
+ catch(e){notify(e.message,true);this.disabled=false}
+};
+$('copy').onclick=function(){var text=$('shareLink').textContent;if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){notify('Pairing link copied')}).catch(function(){notify('Copy the displayed link manually')});else notify('Copy the link from the screen manually')};
+$('share').onclick=async function(){
+ if(sess)return;var code=$('codeEntry').value;if(!/^\d{6}$/.test(code)){notify('Enter the six-digit code',true);return}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){notify('This mobile browser cannot capture the screen. Samsung needs the TabLink Android companion.',true);return}
+ var q=$('quality').value,setting=q==='720'?{width:1280,height:720,fps:30}:q==='4k'?{width:3840,height:2160,fps:60}:{width:1920,height:1080,fps:60};
+ this.disabled=true;
+ try{
+  media=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:source==='window'?'window':'monitor',frameRate:{ideal:setting.fps},width:{ideal:setting.width},height:{ideal:setting.height}},audio:false});
+  var s=await call('/api/join',{code:code},false);begin(s,'sender');
+  var t=media.getVideoTracks()[0];t.onended=function(){finish(true,'Screen sharing stopped')};
+  if(pc){media.getTracks().forEach(function(track){pc.addTrack(track,media)});var offer=await pc.createOffer();await pc.setLocalDescription(offer);await signal({type:'offer',sdp:pc.localDescription.sdp})}
+  state('Connecting');notify('Sharing started. Waiting for your board…');fallbackAfterTimeout();
+ }catch(e){if(media){media.getTracks().forEach(function(x){x.stop()});media=null}notify(e.message,true);this.disabled=false}
+};
+async function finish(notifyOther,message){
+ if(ended)return;ended=true;var old=sess;sess=null;
+ if(notifyOther&&old)fetch('/api/end/'+old.code,{method:'POST',headers:{Authorization:'Bearer '+old.token,'Content-Type':'application/json'},body:'{}'}).catch(function(){});
+ clearTimeout(poller);clearInterval(clock);clearTimeout(watchdog);cleanFrame();
+ if(pc){pc.close();pc=null}if(media){media.getTracks().forEach(function(t){t.onended=null;t.stop()});media=null}
+ $('video').srcObject=null;$('video').classList.add('hidden');$('fallback').classList.add('hidden');$('empty').classList.remove('hidden');
+ $('stop').disabled=true;$('endSession').disabled=true;$('fullscreen').disabled=true;$('copy').disabled=true;$('create').disabled=false;$('share').disabled=false;
+ $('resolution').textContent='—';$('fps').textContent='—';$('mode').textContent='WebRTC';$('countdown').textContent='';state('Not connected');notify(message||'Disconnected');
+}
+$('stop').onclick=function(){finish(true,'Disconnected')};$('endSession').onclick=function(){finish(true,'Disconnected')};
+$('fullscreen').onclick=function(){var el=$('screen');if(el.requestFullscreen)el.requestFullscreen()};
+setInterval(async function(){if(!pc||!sess||view!=='viewer')return;try{var stats=await pc.getStats();stats.forEach(function(s){if(s.type==='inbound-rtp'&&(s.kind==='video'||s.mediaType==='video')){if(s.frameWidth&&s.frameHeight)$('resolution').textContent=s.frameWidth+'×'+s.frameHeight;if(s.framesPerSecond)$('fps').textContent=Math.round(s.framesPerSecond)}})}catch(e){}},1300);
+window.addEventListener('pagehide',function(){if(sess)navigator.sendBeacon&&navigator.sendBeacon('/api/noop','')});
+if(location.pathname==='/test'){switchView('viewer');$('headline').textContent='Boxlight compatibility check.';$('subtitle').textContent='This page opening confirms access to the website. The real-time stream still needs a device test.'}
+})();
+</script></body></html>
