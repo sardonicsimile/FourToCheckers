@@ -11,35 +11,78 @@ button{font-size:18px;font-weight:700;background:#17191f;color:white;border:0;bo
 @media(max-width:620px){.wrap{padding:20px 12px}.card{padding:14px}.grid{gap:6px}.metric{padding:14px 4px}}
 </style></head>
 <body><main class="wrap"><header><div class="brand"><span>T</span>TabLink</div><a class="tag" href="/">Back to pairing</a></header>
-<h1>Can your board play 60 FPS?</h1><p>This test plays a real 1920 × 1080 H.264 video encoded at 60 frames per second. It measures the frames your Opera browser actually processes.</p>
+<h1>Can your board play 60 FPS?</h1><p>This test plays a real 1920 × 1080 H.264 video encoded at 60 frames per second. It estimates frames actually displayed, subtracting dropped frames when the browser provides statistics.</p>
 <section class="card"><video id="video" muted playsinline preload="none" controls></video>
 <button id="start">Start 60 FPS test</button>
-<div class="grid"><div class="metric"><strong id="fps">—</strong><small>Measured FPS</small></div>
+<div class="grid"><div class="metric"><strong id="fps">—</strong><small>Displayed FPS</small></div>
 <div class="metric"><strong id="dropped">—</strong><small>Dropped frames</small></div>
-<div class="metric"><strong id="progress">0/10</strong><small>Seconds measured</small></div></div>
-<div id="result" role="status">Tap Start, then keep this tab open and leave the board untouched while the video plays.</div>
+<div class="metric"><strong id="progress">0/20</strong><small>Seconds measured</small></div></div>
+<div id="result" role="status">Tap Start, then keep this tab open for the full 20-second video. The test finishes when the video ends.</div>
 <p class="notes">This tests H.264 video playback, not a live phone-to-board connection. Even a passing result does not guarantee 1080p/60 FPS casting on your school's network. Video source: TrueFileSize CC0 test clip.</p>
 </section>
 </main><script>
 (function(){
 'use strict';
-var v=document.getElementById('video'),btn=document.getElementById('start'),fps=document.getElementById('fps'),dropped=document.getElementById('dropped'),progress=document.getElementById('progress'),status=document.getElementById('result');
-var interval=null,startTime=0,last=0,tot=0,lastDropped=0,lastSample=0,done=false,callbacks=0;
+var v=document.getElementById('video'),btn=document.getElementById('start'),
+ fps=document.getElementById('fps'),dropped=document.getElementById('dropped'),
+ progress=document.getElementById('progress'),status=document.getElementById('result');
+var interval=null,started=0,baseTotal=0,baseDropped=0,callbacks=0,done=true,runId=0;
 var url='https://cdn.truefilesize.com/mp4/sample-60fps.mp4';
-function quality(){if(v.getVideoPlaybackQuality){var q=v.getVideoPlaybackQuality();return {total:q.totalVideoFrames,dropped:q.droppedVideoFrames}}if(typeof v.webkitDecodedFrameCount==='number')return {total:v.webkitDecodedFrameCount,dropped:v.webkitDroppedFrameCount||0};return null}
-function finish(message){if(interval)clearInterval(interval);interval=null;done=true;btn.disabled=false;btn.textContent='Run test again';v.pause();if(message)status.textContent=message}
+function quality(){
+ if(v.getVideoPlaybackQuality){var q=v.getVideoPlaybackQuality();return {total:q.totalVideoFrames,dropped:q.droppedVideoFrames};}
+ if(typeof v.webkitDecodedFrameCount==='number')return {total:v.webkitDecodedFrameCount,dropped:v.webkitDroppedFrameCount||0};
+ return null;
+}
+function measurement(){
+ var elapsed=Math.max(.01,(performance.now()-started)/1000),q=quality();
+ if(q){
+  var all=Math.max(0,q.total-baseTotal),drop=Math.min(all,Math.max(0,q.dropped-baseDropped)),shown=Math.max(0,all-drop);
+  return {fps:shown/elapsed,drop:drop,all:all,percent:all?100*drop/all:0,kind:'displayed'};
+ }
+ if(v.requestVideoFrameCallback)return {fps:callbacks/elapsed,drop:null,all:callbacks,percent:0,kind:'presented estimate'};
+ return {fps:null,drop:null,all:0,percent:0,kind:'unknown'};
+}
+function paint(){
+ if(!started)return;
+ var m=measurement();
+ fps.textContent=m.fps===null?'N/A':String(Math.round(m.fps));
+ dropped.textContent=m.drop===null?'N/A':String(m.drop);
+ progress.textContent=Math.min(20,Math.floor(v.currentTime||0))+'/20';
+}
+function finish(message){
+ if(done)return;
+ done=true;clearInterval(interval);interval=null;paint();
+ btn.disabled=false;btn.textContent='Run test again';
+ if(message){status.textContent=message;return;}
+ var m=measurement();
+ if(m.fps===null){status.textContent='Video completed, but this browser does not expose frame statistics. Smooth 60 FPS is unverified.';return;}
+ var rate=Math.round(m.fps);
+ if(m.fps>=55&&(m.drop===null||m.percent<5))status.textContent='Playback test looks promising: about '+rate+' displayed FPS'+(m.drop===null?'.':', '+m.percent.toFixed(1)+'% dropped frames')+'. Live casting is still unverified.';
+ else status.textContent='Needs improvement: about '+rate+' displayed FPS'+(m.drop===null?'.':', '+m.percent.toFixed(1)+'% dropped frames')+'. The earlier 59–60 FPS numbers included dropped frames and were misleading.';
+}
 btn.onclick=function(){
- btn.disabled=true;done=false;callbacks=0;startTime=0;last=0;tot=0;lastDropped=0;lastSample=0;fps.textContent='…';dropped.textContent='…';progress.textContent='0/10';status.textContent='Loading test video…';
- v.pause();v.src=url;v.currentTime=0;v.load();
- v.play().then(function(){status.textContent='Test running. Keep this page visible for 10 seconds…';var q=quality();last=q?q.total:0;lastDropped=q?q.dropped:0;startTime=performance.now();lastSample=startTime;
- if(v.requestVideoFrameCallback){var count=function(){if(done)return;callbacks++;v.requestVideoFrameCallback(count)};v.requestVideoFrameCallback(count)}
- interval=setInterval(function(){if(done)return;var now=performance.now(),elapsed=(now-startTime)/1000;if(v.paused&&elapsed<10){status.textContent='Video paused. Tap play to continue.';return}
- var q2=quality(),rendered=q2?(q2.total-last):callbacks;
- var elapsedSince=(now-lastSample)/1000;if(elapsedSince>=.8){var nowfps=rendered/elapsed;fps.textContent=isFinite(nowfps)?Math.round(nowfps):'—';if(q2)dropped.textContent=Math.max(0,q2.dropped-lastDropped);else dropped.textContent='N/A'}
- progress.textContent=Math.min(10,Math.floor(elapsed))+'/10';
- if(elapsed>=10){var avg=isFinite(rendered/elapsed)?Math.round(rendered/elapsed):0;if(q2&&q2.total>last){if(avg>=55){finish('PASS: The browser decoded approximately '+avg+' FPS during this test. Live casting performance is still unverified.')}else {finish('The board processed approximately '+avg+' FPS, below the 60 FPS target. This may reflect decoding, browser limits, or buffering.')}}else if(callbacks>0){finish('The browser presented approximately '+avg+' FPS. Hardware decoding details were unavailable, so treat this as an estimate.')}else{finish('Video played, but this browser did not expose frame statistics. We cannot confirm 60 FPS.')}}},300);
- }).catch(function(e){finish('Could not start video: '+(e&&e.message?e.message:'Playback was blocked')+'. Check that the school network allows the sample video URL.')});
+ runId++;var thisRun=runId;
+ clearInterval(interval);interval=null;done=false;started=0;callbacks=0;
+ fps.textContent='…';dropped.textContent='…';progress.textContent='0/20';
+ btn.disabled=true;status.textContent='Loading test video…';
+ v.pause();v.src=url;v.load();
+ v.play().then(function(){
+  if(thisRun!==runId)return;
+  var q=quality();baseTotal=q?q.total:0;baseDropped=q?q.dropped:0;
+  started=performance.now();
+  status.textContent='Measuring displayed frames. Video plays for its full 20 seconds; no automatic pause at 10 seconds.';
+  if(v.requestVideoFrameCallback){
+   var count=function(){if(done||thisRun!==runId)return;callbacks++;v.requestVideoFrameCallback(count)};
+   v.requestVideoFrameCallback(count);
+  }
+  interval=setInterval(function(){
+   if(done)return;
+   paint();
+   if(v.paused&&!v.ended)status.textContent='The video paused before the end. Tap Play on the video to resume.';
+  },300);
+ }).catch(function(e){if(thisRun===runId)finish('Could not start video: '+(e&&e.message?e.message:'Playback blocked')+'.');});
 };
-v.onerror=function(){if(!done)finish('The sample video could not load. The school firewall may block the external test-video site. This does NOT mean TabLink itself is blocked.')};
+v.onended=function(){finish()};
+v.onerror=function(){if(!done)finish('The test video did not load. The school network might block the external video source.')};
 })();
 </script></body></html>
