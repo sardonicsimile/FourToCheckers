@@ -20,9 +20,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK platform
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" || test ${PIPESTATUS[1]} -eq 0
       - name: Build APK (temporary test signature)
         run: gradle --no-daemon -p board-android :app:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
