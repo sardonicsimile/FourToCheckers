@@ -1,0 +1,22 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.tablink.board'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.tablink.board'
+        minSdk 26
+        targetSdk 28
+        versionCode 6
+        versionName '0.6-test'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes { release { minifyEnabled false } }
+    packaging { jniLibs { useLegacyPackaging = true } }
+}
+dependencies {
+    implementation 'io.github.webrtc-sdk:android:125.6422.06.1'
+}
