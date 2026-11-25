@@ -36,7 +36,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create tablink-board-test-v0.6 \
-            "board-android/app/build/outputs/apk/debug/app-debug.apk#TabLink-Board-test-v0.6.apk" \
-            --target "$GITHUB_SHA" --title "TabLink Board 0.6 experimental" \
+          gh release create tablink-board-test-v0.7 \
+            "board-android/app/build/outputs/apk/debug/app-debug.apk#TabLink-Board-test-v0.7.apk" \
+            --target "$GITHUB_SHA" --title "TabLink Board 0.7 diagnostic" \
             --notes "Experimental Android 8+ Boxlight receiver. Not a finished iPhone broadcast solution. Built for testing WebRTC/decoder support. Verify the APK before installing on a managed school device."
