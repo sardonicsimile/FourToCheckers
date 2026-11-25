@@ -1,6 +1,7 @@
 'use strict';
 const http=require('node:http'),crypto=require('node:crypto');
 const html=require('node:fs').readFileSync(require('node:path').join(__dirname,'index.html'));
+const test60=require('node:fs').readFileSync(require('node:path').join(__dirname,'test60.html'));
 const rooms=new Map(), limits=new Map();
 const rand=()=>crypto.randomBytes(32).toString('base64url');
 const fail=(res,status,message)=>send(res,status,{error:message});
@@ -33,7 +34,7 @@ http.createServer(async(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');
  res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
  const url=new URL(req.url,'http://localhost'),p=url.pathname;
- if(req.method==='GET'&&(p==='/'||p==='/board'||p==='/test')){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return}
+ if(req.method==='GET'&&(p==='/'||p==='/board'||p==='/test'||p==='/test60')){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(p==='/test60'?test60:html);return}
  if(req.method==='GET'&&p==='/healthz')return send(res,200,{ok:true,rooms:rooms.size});
  if(req.method==='POST'&&p==='/api/create'){
   if(throttle(req,'create',12))return fail(res,429,'Too many requests');
