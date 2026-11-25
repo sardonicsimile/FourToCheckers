@@ -71,7 +71,9 @@ public final class BoardActivity extends Activity {
   private PeerConnection peer;
   private ScheduledFuture<?> pollTask, statsTask, jpegTask;
   private volatile String roomCode, viewerToken, frameAfter = "";
-  private volatile boolean disposed = false, videoReceived = false;
+  private volatile boolean disposed = false, videoReceived = false, trackAttached = false;
+  private volatile long lastVideoFrameTime = 0L;
+  private volatile boolean wasStalled = false;
   private int lastRx = 0;
 
   @Override public void onCreate(Bundle b) {
@@ -158,7 +160,7 @@ public final class BoardActivity extends Activity {
     if(pollTask!=null){pollTask.cancel(false);pollTask=null;}
     if(jpegTask!=null){jpegTask.cancel(false);jpegTask=null;}
     if(statsTask!=null){statsTask.cancel(false);statsTask=null;}
-    roomCode=null;viewerToken=null;videoReceived=false;frameAfter="";lastRx=0;
+    roomCode=null;viewerToken=null;videoReceived=false;trackAttached=false;wasStalled=false;lastVideoFrameTime=0L;rxFrames.set(0);frameAfter="";lastRx=0;
     earlyIce.clear();
     if(peer!=null){peer.close();peer.dispose();peer=null;}
     runOnUiThread(()->{
@@ -233,7 +235,15 @@ public final class BoardActivity extends Activity {
     peer=factory.createPeerConnection(cfg,new PeerConnection.Observer(){
       @Override public void onSignalingChange(PeerConnection.SignalingState s){}
       @Override public void onIceConnectionChange(PeerConnection.IceConnectionState s){
-        setStatus("Network connection: "+s.toString());
+        if(disposed)return;
+        if(s == PeerConnection.IceConnectionState.FAILED ||
+           s == PeerConnection.IceConnectionState.DISCONNECTED) {
+          setStatus("Video connection " + s.toString() + ". School network may block direct WebRTC. No TURN relay is configured.");
+          runOnUiThread(() -> { if(!disposed)overlay.setVisibility(View.VISIBLE); });
+        } else if(s == PeerConnection.IceConnectionState.CONNECTED ||
+                  s == PeerConnection.IceConnectionState.COMPLETED) {
+          if(!videoReceived)setStatus("Connection established; waiting for actual video frames…");
+        }
       }
       @Override public void onIceConnectionReceivingChange(boolean r){}
       @Override public void onIceGatheringChange(PeerConnection.IceGatheringState s){}
@@ -265,20 +275,38 @@ public final class BoardActivity extends Activity {
     if(peer==null)throw new IllegalStateException("Cannot initialize video peer");
   }
 
-  private void attachVideo(VideoTrack track) {
-    if(track==null||videoReceived)return;
-    videoReceived=true;
+  private synchronized void attachVideo(VideoTrack track) {
+    if(track==null||disposed||trackAttached)return;
+    trackAttached=true;
+    // A signaled video track is NOT evidence that a single frame was received.
+    // Keep the connection UI visible until an actual frame reaches the receiver.
+    setStatus("Video track offered; waiting for the first video frame…");
     runOnUiThread(()->{
       if(disposed)return;
       try{
         track.addSink(renderer);
         track.addSink(new VideoSink(){
-          @Override public void onFrame(VideoFrame f){rxFrames.incrementAndGet();}
+          @Override public void onFrame(VideoFrame f) {
+            rxFrames.incrementAndGet();
+            lastVideoFrameTime=android.os.SystemClock.elapsedRealtime();
+            if(!videoReceived || wasStalled) {
+              videoReceived=true;
+              wasStalled=false;
+              runOnUiThread(()->{
+                if(disposed)return;
+                renderer.setVisibility(View.VISIBLE);
+                jpegView.setVisibility(View.GONE);
+                overlay.setVisibility(View.GONE);
+                setStatus("Receiving live video");
+              });
+            }
+          }
         });
-        renderer.setVisibility(View.VISIBLE);
-        jpegView.setVisibility(View.GONE);overlay.setVisibility(View.GONE);
-        setStatus("Receiving live WebRTC video");
-      }catch(Exception ex){setStatus("Video renderer error: "+ex.getMessage());}
+      }catch(Exception ex){
+        trackAttached=false;
+        setStatus("Video renderer error: "+ex.getMessage());
+        overlay.setVisibility(View.VISIBLE);
+      }
     });
   }
 
@@ -293,7 +321,7 @@ public final class BoardActivity extends Activity {
       for(int i=0;i<messages.length();i++){
         JSONObject msg=messages.optJSONObject(i);if(msg==null)continue;
         String type=msg.optString("type","");
-        if("joined".equals(type))setStatus("Device paired. Connecting video…");
+        if("joined".equals(type))setStatus("Device paired. Waiting for video frames… If stuck, iPhone background capture or the school network may be blocking the stream.");
         else if("offer".equals(type))onOffer(msg.optString("sdp"));
         else if("ice".equals(type))onRemoteIce(msg.optJSONObject("candidate"));
         else if("ended".equals(type))setStatus("Sender disconnected. Generate a new code.");
@@ -340,8 +368,20 @@ public final class BoardActivity extends Activity {
   private void updateStats(){
     if(disposed||roomCode==null)return;
     int current=rxFrames.get(),received=Math.max(0,current-lastRx);lastRx=current;
-    if(videoReceived)runOnUiThread(()->{
-      if(!disposed)fpsText.setText("≈"+received+" received FPS");
+    final boolean stalled=videoReceived &&
+       android.os.SystemClock.elapsedRealtime()-lastVideoFrameTime>4500L;
+    if(stalled&&!wasStalled){
+      wasStalled=true;
+      setStatus("Stream stalled: 0 incoming frames. Reopen iPhone broadcasting, or check network relay.");
+    }
+    runOnUiThread(()->{
+      if(disposed)return;
+      if(videoReceived)fpsText.setText("≈"+received+" received FPS");
+      if(stalled)overlay.setVisibility(View.VISIBLE);
+      else if(trackAttached&&!videoReceived) {
+        fpsText.setText("0 FPS • awaiting frames");
+        overlay.setVisibility(View.VISIBLE);
+      }
     });
   }
 
