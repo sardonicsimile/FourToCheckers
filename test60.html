@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TabLink 60 FPS Board Test</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f7f7f8;color:#191a1f;font-family:Arial,sans-serif}.wrap{max-width:950px;margin:0 auto;padding:34px 23px}header{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-size:25px;font-weight:800;letter-spacing:-1px}.brand span{background:#17191f;color:#fff;border-radius:10px;padding:8px 12px;margin-right:10px}
+a{color:inherit}.tag{font-size:13px;color:#677181;border:1px solid #dbdfe5;border-radius:50px;padding:9px 14px}h1{font-size:clamp(32px,5vw,52px);line-height:1.08;letter-spacing:-.04em;margin:40px 0 14px}p{font-size:16px;color:#626b77;line-height:1.6}
+.card{background:#fff;border:1px solid #e6e6eb;box-shadow:0 7px 20px #2222220c;border-radius:22px;padding:24px;margin-top:24px}
+video{display:block;width:100%;aspect-ratio:16/9;background:#141821;border-radius:13px;object-fit:contain}
+button{font-size:18px;font-weight:700;background:#17191f;color:white;border:0;border-radius:12px;padding:17px 24px;cursor:pointer;width:100%;margin-top:16px}button:disabled{opacity:.5;cursor:default}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}.metric{background:#f6f7f9;padding:20px 10px;text-align:center;border-radius:14px}.metric strong{font-size:clamp(24px,4vw,38px);font-variant-numeric:tabular-nums;display:block}.metric small{display:block;font-size:12px;color:#657082;margin-top:8px}
+#result{padding:16px;background:#f3f4f6;border-radius:12px;min-height:55px;line-height:1.6;font-size:15px}.notes{font-size:13px;margin-top:18px}
+@media(max-width:620px){.wrap{padding:20px 12px}.card{padding:14px}.grid{gap:6px}.metric{padding:14px 4px}}
+</style></head>
+<body><main class="wrap"><header><div class="brand"><span>T</span>TabLink</div><a class="tag" href="/">Back to pairing</a></header>
+<h1>Can your board play 60 FPS?</h1><p>This test plays a real 1920 × 1080 H.264 video encoded at 60 frames per second. It measures the frames your Opera browser actually processes.</p>
+<section class="card"><video id="video" muted playsinline preload="none" controls></video>
+<button id="start">Start 60 FPS test</button>
+<div class="grid"><div class="metric"><strong id="fps">—</strong><small>Measured FPS</small></div>
+<div class="metric"><strong id="dropped">—</strong><small>Dropped frames</small></div>
+<div class="metric"><strong id="progress">0/10</strong><small>Seconds measured</small></div></div>
+<div id="result" role="status">Tap Start, then keep this tab open and leave the board untouched while the video plays.</div>
+<p class="notes">This tests H.264 video playback, not a live phone-to-board connection. Even a passing result does not guarantee 1080p/60 FPS casting on your school's network. Video source: TrueFileSize CC0 test clip.</p>
+</section>
+</main><script>
+(function(){
+'use strict';
+var v=document.getElementById('video'),btn=document.getElementById('start'),fps=document.getElementById('fps'),dropped=document.getElementById('dropped'),progress=document.getElementById('progress'),status=document.getElementById('result');
+var interval=null,startTime=0,last=0,tot=0,lastDropped=0,lastSample=0,done=false,callbacks=0;
+var url='https://cdn.truefilesize.com/mp4/sample-60fps.mp4';
+function quality(){if(v.getVideoPlaybackQuality){var q=v.getVideoPlaybackQuality();return {total:q.totalVideoFrames,dropped:q.droppedVideoFrames}}if(typeof v.webkitDecodedFrameCount==='number')return {total:v.webkitDecodedFrameCount,dropped:v.webkitDroppedFrameCount||0};return null}
+function finish(message){if(interval)clearInterval(interval);interval=null;done=true;btn.disabled=false;btn.textContent='Run test again';v.pause();if(message)status.textContent=message}
+btn.onclick=function(){
+ btn.disabled=true;done=false;callbacks=0;startTime=0;last=0;tot=0;lastDropped=0;lastSample=0;fps.textContent='…';dropped.textContent='…';progress.textContent='0/10';status.textContent='Loading test video…';
+ v.pause();v.src=url;v.currentTime=0;v.load();
+ v.play().then(function(){status.textContent='Test running. Keep this page visible for 10 seconds…';var q=quality();last=q?q.total:0;lastDropped=q?q.dropped:0;startTime=performance.now();lastSample=startTime;
+ if(v.requestVideoFrameCallback){var count=function(){if(done)return;callbacks++;v.requestVideoFrameCallback(count)};v.requestVideoFrameCallback(count)}
+ interval=setInterval(function(){if(done)return;var now=performance.now(),elapsed=(now-startTime)/1000;if(v.paused&&elapsed<10){status.textContent='Video paused. Tap play to continue.';return}
+ var q2=quality(),rendered=q2?(q2.total-last):callbacks;
+ var elapsedSince=(now-lastSample)/1000;if(elapsedSince>=.8){var nowfps=rendered/elapsed;fps.textContent=isFinite(nowfps)?Math.round(nowfps):'—';if(q2)dropped.textContent=Math.max(0,q2.dropped-lastDropped);else dropped.textContent='N/A'}
+ progress.textContent=Math.min(10,Math.floor(elapsed))+'/10';
+ if(elapsed>=10){var avg=isFinite(rendered/elapsed)?Math.round(rendered/elapsed):0;if(q2&&q2.total>last){if(avg>=55){finish('PASS: The browser decoded approximately '+avg+' FPS during this test. Live casting performance is still unverified.')}else {finish('The board processed approximately '+avg+' FPS, below the 60 FPS target. This may reflect decoding, browser limits, or buffering.')}}else if(callbacks>0){finish('The browser presented approximately '+avg+' FPS. Hardware decoding details were unavailable, so treat this as an estimate.')}else{finish('Video played, but this browser did not expose frame statistics. We cannot confirm 60 FPS.')}}},300);
+ }).catch(function(e){finish('Could not start video: '+(e&&e.message?e.message:'Playback was blocked')+'. Check that the school network allows the sample video URL.')});
+};
+v.onerror=function(){if(!done)finish('The sample video could not load. The school firewall may block the external test-video site. This does NOT mean TabLink itself is blocked.')};
+})();
+</script></body></html>
