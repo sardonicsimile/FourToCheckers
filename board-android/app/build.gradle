@@ -7,8 +7,8 @@ android {
         applicationId 'com.tablink.board'
         minSdk 26
         targetSdk 28
-        versionCode 6
-        versionName '0.6-test'
+        versionCode 7
+        versionName '0.7-test'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
